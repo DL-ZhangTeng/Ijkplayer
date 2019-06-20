@@ -1,11 +1,9 @@
 package com.kk.taurus.ui;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.support.constraint.ConstraintLayout;
-import android.support.v4.app.FragmentActivity;
-import android.support.v7.app.AppCompatActivity;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.animation.AlphaAnimation;
@@ -13,6 +11,9 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationSet;
 import android.view.animation.ScaleAnimation;
 import android.widget.ImageView;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.kk.taurus.cover.CloseCover;
 import com.kk.taurus.cover.DataInter;
@@ -40,6 +41,19 @@ public class VideoActivity extends AppCompatActivity {
     private float widthValue;
     private float heightValue;
     private String url;
+    private boolean isWXAnimation = false;
+
+    /**
+     * @param activity 源activity
+     * @param url      视频数据
+     */
+    public static void startVideoActivity(Activity activity, String url) {
+        Intent intent = new Intent(activity, VideoActivity.class);
+        intent.putExtra("videoUrl", url);
+        activity.startActivity(intent);
+        //淡入淡出
+        activity.overridePendingTransition(R.anim.photoview_in, R.anim.photoview_out);
+    }
 
     /**
      * @param activity       源activity
@@ -53,13 +67,14 @@ public class VideoActivity extends AppCompatActivity {
      *                       widthAndHeight[1] = v.getMeasuredHeight();
      *                       VideoActivity.startVideoActivity(getActivity(), location, widthAndHeight);
      */
-    public static void startVideoActivity(FragmentActivity activity, String url, int[] location, int[] widthAndHeight) {
+    public static void startVideoActivity(Activity activity, String url, int[] location, int[] widthAndHeight) {
         Intent intent = new Intent(activity, VideoActivity.class);
         intent.putExtra("videoUrl", url);
         intent.putExtra("pointX", location[0]);
         intent.putExtra("pointY", location[1]);
         intent.putExtra("width", widthAndHeight[0]);
         intent.putExtra("height", widthAndHeight[1]);
+        intent.putExtra("isWXAnimation", true);
         activity.startActivity(intent);
         activity.overridePendingTransition(0, 0);
     }
@@ -74,6 +89,9 @@ public class VideoActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         DisplayMetrics metrics = getResources().getDisplayMetrics();
+        if (intent.hasExtra("isWXAnimation")) {
+            isWXAnimation = intent.getBooleanExtra("isWXAnimation", false);
+        }
         if (intent.hasExtra("videoUrl")) {
             url = intent.getStringExtra("videoUrl");
         }
@@ -115,19 +133,33 @@ public class VideoActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        startAnimation(baseVideoView, pointXValue, pointYValue, widthValue, heightValue);
+        if (isWXAnimation) {
+            startAnimation(baseVideoView, pointXValue, pointYValue, widthValue, heightValue);
+        } else {
+            constraintLayout.setBackgroundColor(Color.parseColor("#ff000000"));
+            startVideo();
+        }
+
     }
 
     @Override
     public void onBackPressed() {
-        closeAnimation(baseVideoView, pointXValue, pointYValue, widthValue, heightValue);
+        if (isWXAnimation) {
+            closeAnimation(baseVideoView, pointXValue, pointYValue, widthValue, heightValue);
+        } else {
+            if (baseVideoView.isPlaying())
+                baseVideoView.stopPlayback();
+        }
         super.onBackPressed();
     }
 
     @Override
     public void finish() {
         super.finish();
-        overridePendingTransition(0, 0);
+        if (!isWXAnimation)
+            overridePendingTransition(R.anim.photoview_in, R.anim.photoview_out);
+        else
+            overridePendingTransition(0, 0);
     }
 
     private void startVideo() {
